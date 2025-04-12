@@ -85,8 +85,7 @@ The build files will be located in the `dist` directory and can be served by any
 ## 🌟 Features
 
 ### 1. Welcome Status Dashboard
-<!-- Add welcome-status.jpg here -->
-![Welcome Status](assets/images/welcome-status.jpg)
+![Welcome Status](./src/assets/images/welcome-status.jpg.png)
 
 The entry point of the application where users can:
 - Select product zones (Red, Blue, Yellow, Green)
@@ -95,8 +94,7 @@ The entry point of the application where users can:
 - Monitor estimated waiting times
 
 ### 2. Main Dashboard
-<!-- Add dashboard.jpg here -->
-![Dashboard](assets/images/dashboard.jpg)
+![Dashboard](./src/assets/images/dashboard.jpg.png)
 
 A comprehensive overview featuring:
 - Real-time temperature monitoring across zones
@@ -106,8 +104,7 @@ A comprehensive overview featuring:
 - Interactive charts and graphs
 
 ### 3. Tracking System
-<!-- Add tracking.jpg here -->
-![Tracking](assets/images/tracking.jpg)
+![Tracking](./src/assets/images/tracking.jpg.png)
 
 Advanced tracking capabilities including:
 - Real-time robot location tracking
@@ -162,8 +159,7 @@ src/
 ## 🎨 UI/UX Features
 
 ### Modern Design
-<!-- Add design-showcase.jpg here -->
-![Design Showcase](assets/images/design-showcase.jpg)
+![Design Showcase](./src/assets/images/dashboard1.jpg.png)
 
 - Dark mode optimized interface
 - Gradient backgrounds
@@ -172,8 +168,7 @@ src/
 - Smooth animations and transitions
 
 ### Interactive Elements
-<!-- Add interactions.jpg here -->
-![Interactions](assets/images/interactions.jpg)
+![Interactions](./src/assets/images/car.png)
 
 - Real-time data updates
 - Interactive charts
@@ -186,14 +181,13 @@ src/
 The application can be configured through environment variables:
 
 ```env
-REACT_APP_SENSOR_API_URL=your_api_url
-REACT_APP_SENSOR_API_KEY=your_api_key
+VITE_API_URL=your_api_url
+VITE_WEBSOCKET_URL=your_websocket_url
 ```
 
 ## 📱 Responsive Design
 
-<!-- Add responsive-design.jpg here -->
-![Responsive Design](assets/images/responsive-design.jpg)
+![Responsive Design](./src/assets/images/track.png)
 
 The application is fully responsive and works on:
 - Desktop computers
@@ -224,13 +218,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- Your Name - Initial work
+- Smart Warehouse Team - Initial work
 
 ## 🙏 Acknowledgments
 
 - Material-UI team for the amazing component library
-- Nivo team for the beautiful charts
 - React team for the fantastic framework
+- Socket.IO team for the real-time communication library
 
 ---
 
