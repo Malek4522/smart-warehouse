@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Warehouse Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        .warehouse-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-gap: 10px;
+            margin-bottom: 20px;
+        }
+        .grid-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            position: relative;
+        }
+        .robot-avatar {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #333;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            bottom: 5px;
+            right: 5px;
+            transition: transform 0.5s ease-in-out;
+            z-index: 10;
+        }
+        .robot-moving {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(51, 51, 51, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(51, 51, 51, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(51, 51, 51, 0); }
+        }
+        .task-queue-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid #ddd;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .task-queue-item:hover {
+            background-color: #e9ecef;
+        }
+        .task-queue-item.active {
+            border-left-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        .task-queue-item.putaway {
+            border-left-color: #0d6efd;
+        }
+        .task-queue-item.retrieve {
+            border-left-color: #fd7e14;
+        }
+        .phase-badge {
+            display: inline-block;
+            padding: 0.25em 0.6em;
+            font-size: 75%;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0.25rem;
+            background-color: #6c757d;
+            color: white;
+        }
+        .phase-going {
+            background-color: #0d6efd;
+        }
+        .phase-returning {
+            background-color: #fd7e14;
+        }
+        .shelf-red {
+            background-color: rgba(255, 0, 0, 0.1);
+            border-color: #ff0000;
+        }
+        .shelf-blue {
+            background-color: rgba(0, 0, 255, 0.1);
+            border-color: #0000ff;
+        }
+        .shelf-green {
+            background-color: rgba(0, 128, 0, 0.1);
+            border-color: #008000;
+        }
+        .shelf-yellow {
+            background-color: rgba(255, 255, 0, 0.1);
+            border-color: #ffff00;
+        }
+        .home {
+            background-color: rgba(128, 128, 128, 0.1);
+            border-color: #808080;
+        }
+        .charge {
+            background-color: rgba(255, 165, 0, 0.1);
+            border-color: #ffa500;
+        }
+        .active-position {
+            box-shadow: 0 0 10px 3px rgba(0, 128, 255, 0.5);
+        }
+        .log-container {
+            height: 200px;
+            overflow-y: scroll;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+        .task-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+            background-color: #f1f1f1;
+        }
+        .shelf-details {
+            display: none;
+            margin-top: 20px;
+        }
+        .position-filled {
+            background-color: rgba(0, 200, 0, 0.2);
+        }
+        .position-reserved {
+            background-color: rgba(255, 165, 0, 0.2);
+        }
+        .position-empty {
+            background-color: rgba(240, 240, 240, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Smart Warehouse Management</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Warehouse Layout</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="warehouse-grid">
+                            <!-- HOME and CHARGE areas -->
+                            <div class="grid-item home" id="HOME">HOME</div>
+                            <div class="grid-item charge" id="CHARGE">CHARGE</div>
+                            <div class="grid-item"></div>
+                            <div class="grid-item"></div>
+                            <div class="grid-item"></div>
+                            
+                            <!-- Shelves -->
+                            <div class="grid-item shelf-red" id="S1" data-color="red">S1 (Red)<br>Levels: 3<br>Positions: 4</div>
+                            <div class="grid-item shelf-blue" id="S2" data-color="blue">S2 (Blue)<br>Levels: 3<br>Positions: 4</div>
+                            <div class="grid-item shelf-green" id="S3" data-color="green">S3 (Green)<br>Levels: 3<br>Positions: 4</div>
+                            <div class="grid-item shelf-yellow" id="S4" data-color="yellow">S4 (Yellow)<br>Levels: 3<br>Positions: 4</div>
+                            <div class="grid-item"></div>
+                        </div>
+                        
+                        <!-- Shelf Details Section - Will be shown when a shelf is clicked -->
+                        <div id="shelf-details" class="shelf-details">
+                            <h5 id="shelf-title">Shelf Details</h5>
+                            <div id="levels-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>ESP32 Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-info">
+                            <p><strong>State:</strong> <span id="esp-state">Unknown</span></p>
+                            <p><strong>Battery:</strong> <span id="esp-battery">0%</span></p>
+                            <p><strong>Location:</strong> <span id="esp-location">Unknown</span></p>
+                            <p><strong>Target:</strong> <span id="esp-target">None</span></p>
+                            <p><strong>Task:</strong> <span id="esp-task">None</span></p>
+                            <p><strong>Phase:</strong> <span id="esp-phase">None</span></p>
+                            <p><strong>Product:</strong> <span id="esp-product">None</span></p>
+                        </div>
+                        <div class="mt-3">
+                            <div class="progress mb-2">
+                                <div id="battery-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex">
+                                <button class="btn btn-warning btn-sm" id="btn-charge">Charge</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-maintenance">Maintenance</button>
+                                <button class="btn btn-danger btn-sm" id="btn-shutdown">Shutdown</button>
+                                <button class="btn btn-success btn-sm" id="btn-power-on">Power On</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Warehouse Stats</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="warehouse-stats">
+                            <p><strong>Total Positions:</strong> <span id="total-positions">-</span></p>
+                            <p><strong>Filled Positions:</strong> <span id="filled-positions">-</span></p>
+                            <p><strong>Occupancy Rate:</strong> <span id="occupancy-rate">-</span></p>
+                            <div class="progress mb-2">
+                                <div id="occupancy-progress" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div class="d-grid">
+                                <button class="btn btn-outline-primary btn-sm" id="btn-refresh-stats">Refresh Stats</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Task Assignment</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="taskType" id="task-putaway" value="putaway" checked>
+                                    <label class="form-check-label" for="task-putaway">
+                                        Put Away Product
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="taskType" id="task-retrieve" value="retrieve">
+                                    <label class="form-check-label" for="task-retrieve">
+                                        Retrieve Product
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="product-color" class="form-label">Product Color</label>
+                            <select class="form-select" id="product-color">
+                                <option value="red">Red</option>
+                                <option value="blue">Blue</option>
+                                <option value="green">Green</option>
+                                <option value="yellow">Yellow</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button class="btn btn-primary" id="btn-assign-task">Assign Task</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>System Log</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-container" id="log-container"></div>
+                        <div class="d-grid">
+                            <button class="btn btn-outline-secondary" id="btn-clear-log">Clear Log</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Task Queue <span class="badge bg-primary" id="queue-size">0</span></h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-warning" id="btn-cleanup-positions">Clean Reserved Positions</button>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" id="btn-refresh-queue">Refresh Queue</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Task ID</th>
+                                        <th>Type</th>
+                                        <th>Product</th>
+                                        <th>Target</th>
+                                        <th>Position</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="queue-table-body">
+                                    <!-- Task queue items will be inserted here -->
+                                    <tr>
+                                        <td colspan="7" class="text-center">Queue is empty</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ESP32 Firmware Updates Section -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>ESP32 Firmware Update</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Simple File Upload -->
+                        <form id="upload-form" enctype="multipart/form-data" class="mb-4">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <input class="form-control" type="file" id="updateFile" name="updateFile" accept=".bin,.hex,.ino,.zip">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">Upload & Send to ESP32</button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Simple Progress Bar -->
+                        <div id="update-progress-container" class="d-none">
+                            <div class="progress mb-2" style="height: 25px;">
+                                <div id="update-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div id="update-status">Ready</div>
+                                <button class="btn btn-sm btn-danger" id="btn-abort-update">Cancel</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Status Message -->
+                        <div id="upload-status" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connect to Socket.IO server
+        const socket = io();
+        
+        // DOM elements
+        const logContainer = document.getElementById('log-container');
+        const espState = document.getElementById('esp-state');
+        const espBattery = document.getElementById('esp-battery');
+        const espLocation = document.getElementById('esp-location');
+        const espTask = document.getElementById('esp-task');
+        const espProduct = document.getElementById('esp-product');
+        const batteryProgress = document.getElementById('battery-progress');
+        const shelfDetails = document.getElementById('shelf-details');
+        const shelfTitle = document.getElementById('shelf-title');
+        const levelsContainer = document.getElementById('levels-container');
+        const totalPositions = document.getElementById('total-positions');
+        const filledPositions = document.getElementById('filled-positions');
+        const occupancyRate = document.getElementById('occupancy-rate');
+        const occupancyProgress = document.getElementById('occupancy-progress');
+        
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Update ESP32 status display
+        function updateESP32Status(data) {
+            if (data.state) {
+                espState.textContent = data.state;
+                
+                // Change colors based on state
+                espState.className = '';
+                switch (data.state) {
+                    case 'active':
+                        espState.classList.add('text-primary');
+                        break;
+                    case 'idle':
+                        espState.classList.add('text-secondary');
+                        break;
+                    case 'charging':
+                        espState.classList.add('text-warning');
+                        break;
+                    case 'maintenance':
+                        espState.classList.add('text-danger');
+                        break;
+                    case 'shutdown':
+                        espState.classList.add('text-dark');
+                        break;
+                }
+            }
+            
+            if (data.batteryLevel !== undefined) {
+                const batteryLevel = Math.round(data.batteryLevel);
+                espBattery.textContent = `${batteryLevel}%`;
+                batteryProgress.style.width = `${batteryLevel}%`;
+                
+                // Change battery color based on level
+                batteryProgress.className = 'progress-bar';
+                if (batteryLevel > 60) {
+                    batteryProgress.classList.add('bg-success');
+                } else if (batteryLevel > 20) {
+                    batteryProgress.classList.add('bg-warning');
+                } else {
+                    batteryProgress.classList.add('bg-danger');
+                }
+            }
+            
+            if (data.currentLocation) {
+                espLocation.textContent = data.currentLocation;
+                
+                // Remove robot avatar from all locations
+                document.querySelectorAll('.robot-avatar').forEach(avatar => {
+                    avatar.remove();
+                });
+                
+                // Add robot avatar to current location
+                const locationElement = document.getElementById(data.currentLocation);
+                if (locationElement) {
+                    const robotAvatar = document.createElement('div');
+                    robotAvatar.className = 'robot-avatar';
+                    robotAvatar.textContent = 'R';
+                    
+                    // Add movement animation if robot is moving
+                    if (data.isMoving) {
+                        robotAvatar.classList.add('robot-moving');
+                    }
+                    
+                    locationElement.appendChild(robotAvatar);
+                    locationElement.classList.add('active-position');
+                }
+            }
+            
+            // Update target location
+            if (data.targetLocation) {
+                document.getElementById('esp-target').textContent = data.targetLocation;
+            } else {
+                document.getElementById('esp-target').textContent = 'None';
+            }
+            
+            // Update operation phase
+            if (data.operationPhase) {
+                const phaseElement = document.getElementById('esp-phase');
+                phaseElement.textContent = data.operationPhase;
+                phaseElement.className = '';
+                phaseElement.classList.add(data.operationPhase === 'going' ? 'text-primary' : 'text-warning');
+            } else {
+                document.getElementById('esp-phase').textContent = 'None';
+                document.getElementById('esp-phase').className = '';
+            }
+            
+            if (data.taskId) {
+                espTask.textContent = `${data.taskType || 'Unknown'} (${data.taskId})`;
+                
+                if (data.productColor) {
+                    espProduct.textContent = `${data.productColor}${data.productId ? ' (' + data.productId + ')' : ''}`;
+                }
+            } else {
+                espTask.textContent = 'None';
+                espProduct.textContent = 'None';
+            }
+            
+            // Update queue size indicator if available
+            if (data.queueSize !== undefined) {
+                document.getElementById('queue-size').textContent = data.queueSize;
+            }
+        }
+        
+        // Load shelf details
+        async function loadShelfDetails(shelfNumber) {
+            try {
+                const response = await fetch(`/api/shelves/${shelfNumber}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const shelf = data.data;
+                    shelfTitle.textContent = `Shelf ${shelf.shelfNumber} (${shelf.shelfColor})`;
+                    levelsContainer.innerHTML = '';
+                    
+                    // Sort levels
+                    shelf.levels.sort((a, b) => a.levelNumber - b.levelNumber);
+                    
+                    shelf.levels.forEach(level => {
+                        const levelDiv = document.createElement('div');
+                        levelDiv.className = 'card mb-3';
+                        
+                        const levelHeader = document.createElement('div');
+                        levelHeader.className = 'card-header';
+                        levelHeader.textContent = `Level ${level.levelNumber}`;
+                        
+                        const levelBody = document.createElement('div');
+                        levelBody.className = 'card-body';
+                        
+                        const positionsRow = document.createElement('div');
+                        positionsRow.className = 'row';
+                        
+                        // Sort positions
+                        level.positions.sort((a, b) => a.positionNumber - b.positionNumber);
+                        
+                        level.positions.forEach(position => {
+                            const positionCol = document.createElement('div');
+                            positionCol.className = 'col-3 mb-2';
+                            
+                            const positionCard = document.createElement('div');
+                            positionCard.className = `card position-${position.isEmpty ? 'empty' : (position.status === 'reserved' ? 'reserved' : 'filled')}`;
+                            
+                            const positionHeader = document.createElement('div');
+                            positionHeader.className = 'card-header py-1 text-center';
+                            positionHeader.textContent = `P${position.positionNumber}`;
+                            
+                            const positionBody = document.createElement('div');
+                            positionBody.className = 'card-body py-2 text-center';
+                            
+                            if (!position.isEmpty) {
+                                const productBadge = document.createElement('span');
+                                productBadge.className = `badge bg-${getColorClass(position.color)}`;
+                                productBadge.textContent = position.status;
+                                positionBody.appendChild(productBadge);
+                                
+                                if (position.productId) {
+                                    const productIdElement = document.createElement('small');
+                                    productIdElement.className = 'd-block mt-1';
+                                    productIdElement.textContent = position.productId;
+                                    positionBody.appendChild(productIdElement);
+                                }
+                                
+                                // Add retrieve button if the position is filled
+                                if (position.status === 'filled') {
+                                    const retrieveBtn = document.createElement('button');
+                                    retrieveBtn.className = 'btn btn-sm btn-outline-primary mt-2';
+                                    retrieveBtn.textContent = 'Retrieve';
+                                    retrieveBtn.addEventListener('click', () => {
+                                        socket.emit('assign_retrieval_task', {
+                                            productColor: position.color,
+                                            shelfNumber: shelf.shelfNumber,
+                                            levelNumber: level.levelNumber,
+                                            positionNumber: position.positionNumber
+                                        });
+                                        addLog(`Requested retrieval from ${shelf.shelfNumber} L${level.levelNumber} P${position.positionNumber}`);
+                                    });
+                                    positionBody.appendChild(retrieveBtn);
+                                }
+                            } else {
+                                positionBody.textContent = 'Empty';
+                            }
+                            
+                            positionCard.appendChild(positionHeader);
+                            positionCard.appendChild(positionBody);
+                            positionCol.appendChild(positionCard);
+                            positionsRow.appendChild(positionCol);
+                        });
+                        
+                        levelBody.appendChild(positionsRow);
+                        levelDiv.appendChild(levelHeader);
+                        levelDiv.appendChild(levelBody);
+                        levelsContainer.appendChild(levelDiv);
+                    });
+                    
+                    // Show the shelf details
+                    shelfDetails.style.display = 'block';
+                } else {
+                    addLog(`Error loading shelf details: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading shelf details:', error);
+                addLog(`Error loading shelf details: ${error.message}`, 'error');
+            }
+        }
+        
+        // Refresh warehouse stats
+        async function refreshWarehouseStats() {
+            try {
+                const response = await fetch('/api/warehouse/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.data;
+                    totalPositions.textContent = stats.totalPositions;
+                    filledPositions.textContent = stats.filledPositions;
+                    occupancyRate.textContent = `${Math.round(stats.occupancyRate)}%`;
+                    occupancyProgress.style.width = `${stats.occupancyRate}%`;
+                } else {
+                    addLog(`Error loading warehouse stats: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading warehouse stats:', error);
+                addLog(`Error loading warehouse stats: ${error.message}`, 'error');
+            }
+        }
+        
+        // Helper function for color badge class
+        function getColorClass(color) {
+            switch (color) {
+                case 'red': return 'danger';
+                case 'blue': return 'primary';
+                case 'green': return 'success';
+                case 'yellow': return 'warning';
+                default: return 'secondary';
+            }
+        }
+        
+        // Update task queue
+        function updateTaskQueue(queueData) {
+            const queueTableBody = document.getElementById('queue-table-body');
+            const queueSize = document.getElementById('queue-size');
+            
+            // Update queue size badge
+            queueSize.textContent = queueData.queueSize || 0;
+            
+            // Clear current queue items
+            queueTableBody.innerHTML = '';
+            
+            if (!queueData.queueItems || queueData.queueItems.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="7" class="text-center">Queue is empty</td>';
+                queueTableBody.appendChild(emptyRow);
+                return;
+            }
+            
+            // Add queue items
+            queueData.queueItems.forEach(task => {
+                const row = document.createElement('tr');
+                row.className = task.taskId === queueData.currentTaskId ? 'table-active' : '';
+                
+                row.innerHTML = `
+                    <td>${task.taskId}</td>
+                    <td>
+                        <span class="badge ${task.taskType === 'putaway' ? 'bg-primary' : 'bg-warning'}">
+                            ${task.taskType}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${getColorClass(task.productColor)}">
+                            ${task.productColor}
+                        </span>
+                    </td>
+                    <td>${task.targetLocation || '-'}</td>
+                    <td>
+                        ${task.shelfNumber ? 
+                            `${task.shelfNumber} L${task.levelNumber} P${task.positionNumber}` : 
+                            '-'
+                        }
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">
+                            ${task.queuePosition ? `Queued (#${task.queuePosition})` : 'Active'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-danger cancel-task" data-task-id="${task.taskId}">
+                            Cancel
+                        </button>
+                        ${!queueData.currentTaskId && task.queuePosition ? 
+                            `<button class="btn btn-sm btn-primary ms-2 start-task" data-task-id="${task.taskId}">
+                                Start
+                            </button>` : 
+                            ''
+                        }
+                    </td>
+                `;
+                
+                queueTableBody.appendChild(row);
+            });
+            
+            // Add event listeners to task action buttons
+            document.querySelectorAll('.cancel-task').forEach(button => {
+                button.addEventListener('click', function() {
+                    const taskId = this.getAttribute('data-task-id');
+                    socket.emit('cancel_task', { taskId: taskId });
+                    addLog(`Requested cancellation of task ${taskId}`, 'info');
+                });
+            });
+            
+            document.querySelectorAll('.start-task').forEach(button => {
+                button.addEventListener('click', function() {
+                    const taskId = this.getAttribute('data-task-id');
+                    socket.emit('start_next_task', { taskId: taskId });
+                    addLog(`Requested to start task ${taskId}`, 'info');
+                });
+            });
+        }
+        
+        // Request queue status from server
+        function requestQueueStatus() {
+            socket.emit('get_queue_status');
+            addLog('Requested task queue status', 'info');
+        }
+        
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            addLog('Connected to server');
+            // Request queue status on connect
+            requestQueueStatus();
+        });
+        
+        socket.on('disconnect', () => {
+            addLog('Disconnected from server', 'error');
+        });
+        
+        socket.on('message', (data) => {
+            addLog(`Server message: ${data.content}`, data.type === 'error' ? 'error' : 'info');
+        });
+        
+        socket.on('esp32_status', (data) => {
+            updateESP32Status(data);
+        });
+        
+        socket.on('queue_status', (data) => {
+            updateTaskQueue(data);
+        });
+        
+        socket.on('task_completed', (data) => {
+            addLog(`Task completed: ${data.taskType} for ${data.productColor} product at ${data.location}`, 'info');
+            
+            // Request updated queue status
+            requestQueueStatus();
+            
+            // Refresh stats and shelf details
+            refreshWarehouseStats();
+            if (shelfDetails.style.display !== 'none' && data.shelfNumber) {
+                loadShelfDetails(data.shelfNumber);
+            }
+        });
+        
+        socket.on('task_started', (data) => {
+            addLog(`ESP32 started task: ${data.taskType} for ${data.productColor} product`, 'info');
+            // Request updated queue status
+            requestQueueStatus();
+        });
+        
+        socket.on('task_queued', (data) => {
+            addLog(`Task queued: ${data.taskId} (position ${data.queuePosition})`, 'info');
+            // Request updated queue status
+            requestQueueStatus();
+        });
+        
+        socket.on('operation_phase_update', (data) => {
+            addLog(`Operation phase changed to: ${data.operationPhase}`, 'info');
+        });
+        
+        socket.on('location_arrival', (data) => {
+            addLog(`ESP32 arrived at location: ${data.location}`, 'info');
+        });
+        
+        socket.on('movement_started', (data) => {
+            addLog(`ESP32 started moving from ${data.from} to ${data.to} (${data.travelTime}s)`, 'info');
+        });
+        
+        socket.on('task_cancellation_result', (data) => {
+            if (data.success) {
+                addLog(`Task ${data.taskId} was successfully cancelled`, 'info');
+            } else {
+                addLog(`Failed to cancel task ${data.taskId}`, 'error');
+            }
+            // Request updated queue status
+            requestQueueStatus();
+        });
+        
+        socket.on('task_rejected', (data) => {
+            addLog(`Task ${data.taskId} was rejected: ${data.reason}`, 'error');
+        });
+        
+        // Add event listeners to shelf items
+        document.querySelectorAll('.shelf-red, .shelf-blue, .shelf-green, .shelf-yellow').forEach(shelf => {
+            shelf.addEventListener('click', function() {
+                const shelfNumber = this.id;
+                loadShelfDetails(shelfNumber);
+            });
+        });
+        
+        // Button event listeners
+        document.getElementById('btn-assign-task').addEventListener('click', () => {
+            const taskType = document.querySelector('input[name="taskType"]:checked').value;
+            const productColor = document.getElementById('product-color').value;
+            
+            if (taskType === 'putaway') {
+                socket.emit('assign_putaway_task', {
+                    productColor: productColor
+                });
+                addLog(`Assigned putaway task for ${productColor} product`);
+            } else {
+                socket.emit('assign_retrieval_task', {
+                    productColor: productColor
+                });
+                addLog(`Assigned retrieval task for ${productColor} product`);
+            }
+        });
+        
+        document.getElementById('btn-charge').addEventListener('click', () => {
+            socket.emit('charge');
+            addLog('Sent charge command to ESP32');
+        });
+        
+        document.getElementById('btn-maintenance').addEventListener('click', () => {
+            socket.emit('maintenance');
+            addLog('Sent maintenance command to ESP32');
+        });
+        
+        document.getElementById('btn-shutdown').addEventListener('click', () => {
+            socket.emit('shutdown');
+            addLog('Sent shutdown command to ESP32');
+        });
+        
+        document.getElementById('btn-power-on').addEventListener('click', () => {
+            socket.emit('power_on');
+            addLog('Sent power on command to ESP32');
+        });
+        
+        document.getElementById('btn-clear-log').addEventListener('click', () => {
+            logContainer.innerHTML = '';
+        });
+        
+        document.getElementById('btn-refresh-stats').addEventListener('click', () => {
+            refreshWarehouseStats();
+        });
+        
+        document.getElementById('btn-refresh-queue').addEventListener('click', () => {
+            socket.emit('get_queue_status');
+            addLog('Requested task queue status', 'info');
+        });
+        
+        document.getElementById('btn-cleanup-positions').addEventListener('click', () => {
+            socket.emit('clean_reserved_positions');
+            addLog('Cleaning up orphaned reserved positions', 'info');
+        });
+        
+        // Simple Firmware Update functionality
+        let updateInProgress = false;
+        
+        // Handle upload form submission
+        document.getElementById('upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            if (updateInProgress) {
+                addLog('An update is already in progress', 'warning');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            const uploadStatus = document.getElementById('upload-status');
+            const progressContainer = document.getElementById('update-progress-container');
+            const progressBar = document.getElementById('update-progress');
+            const statusText = document.getElementById('update-status');
+            
+            // Check if file is selected
+            const fileInput = document.getElementById('updateFile');
+            if (!fileInput.files[0]) {
+                uploadStatus.innerHTML = '<div class="alert alert-danger">Please select a file</div>';
+                return;
+            }
+            
+            // Show loading indicator
+            uploadStatus.innerHTML = '<div class="alert alert-info">Uploading firmware update...</div>';
+            
+            fetch('/api/upload-update', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    uploadStatus.innerHTML = '<div class="alert alert-success">Upload successful, sending to ESP32...</div>';
+                    
+                    // Reset form
+                    document.getElementById('upload-form').reset();
+                    
+                    // Show progress bar
+                    progressContainer.classList.remove('d-none');
+                    progressBar.style.width = '0%';
+                    progressBar.textContent = '0%';
+                    statusText.textContent = 'Preparing to send update...';
+                    
+                    // Mark update as in progress
+                    updateInProgress = true;
+                    
+                    // Send update to ESP32 - use the ID from the response
+                    // Fix: Check if data.update exists, if not use first available update
+                    if (data.update && data.update.id) {
+                        socket.emit('send_update_to_esp32', { updateId: data.update.id });
+                        addLog(`Sending firmware update: ${data.update.filename}`, 'info');
+                    } else {
+                        // Request available updates and use the first one
+                        socket.emit('request_available_updates');
+                        addLog('Getting latest update ID...', 'info');
+                        
+                        // Set a listener for available updates response
+                        const availableUpdatesHandler = (updates) => {
+                            if (updates && updates.length > 0) {
+                                // Use the most recently uploaded update (should be at the end)
+                                const latestUpdate = updates[updates.length - 1];
+                                socket.emit('send_update_to_esp32', { updateId: latestUpdate.id });
+                                addLog(`Sending firmware update: ${latestUpdate.filename}`, 'info');
+                                
+                                // Remove this temporary listener
+                                socket.off('available_updates', availableUpdatesHandler);
+                            } else {
+                                addLog('No updates available to send', 'error');
+                                updateInProgress = false;
+                                progressContainer.classList.add('d-none');
+                                uploadStatus.innerHTML = '<div class="alert alert-danger">Error: No updates available to send</div>';
+                                
+                                // Remove this temporary listener
+                                socket.off('available_updates', availableUpdatesHandler);
+                            }
+                        };
+                        
+                        // Add temporary listener
+                        socket.on('available_updates', availableUpdatesHandler);
+                    }
+                } else {
+                    uploadStatus.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Unknown error'}</div>`;
+                }
+            })
+            .catch(error => {
+                uploadStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            });
+        });
+        
+        // Listen for abort update button click
+        document.getElementById('btn-abort-update').addEventListener('click', function() {
+            if (!updateInProgress) return;
+            
+            socket.emit('abort_update');
+            document.getElementById('update-status').textContent = 'Update aborted';
+            addLog('Firmware update aborted', 'warning');
+            
+            // Hide progress after a delay
+            setTimeout(() => {
+                document.getElementById('update-progress-container').classList.add('d-none');
+                updateInProgress = false;
+            }, 1000);
+        });
+        
+        // Socket.IO events for firmware updates
+        socket.on('update_metadata_received', (data) => {
+            if (!updateInProgress) return;
+            addLog(`ESP32 ready to receive update`, 'info');
+            document.getElementById('update-status').textContent = 'ESP32 ready for update...';
+        });
+        
+        socket.on('update_chunk', (data) => {
+            if (!updateInProgress) return;
+            
+            // Update progress bar
+            const progress = Math.round(((data.chunkIndex + 1) / data.totalChunks) * 100);
+            const progressBar = document.getElementById('update-progress');
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${progress}%`;
+            document.getElementById('update-status').textContent = 'Sending update...';
+            
+            // Log progress at reasonable intervals
+            if (data.chunkIndex % 10 === 0 || data.isLastChunk) {
+                addLog(`Update progress: ${progress}%`, 'info');
+            }
+        });
+        
+        socket.on('update_complete', (data) => {
+            if (!updateInProgress) return;
+            addLog(`Update sent to ESP32`, 'success');
+            document.getElementById('update-status').textContent = 'Update sent! ESP32 processing...';
+        });
+        
+        socket.on('update_applied', (data) => {
+            if (!updateInProgress) return;
+            
+            if (data.success) {
+                addLog(`ESP32 update successful`, 'success');
+                document.getElementById('update-status').textContent = 'Update successful!';
+                document.getElementById('upload-status').innerHTML = '<div class="alert alert-success">ESP32 update successful!</div>';
+            } else {
+                addLog(`ESP32 update failed`, 'error');
+                document.getElementById('update-status').textContent = 'Update failed';
+                document.getElementById('upload-status').innerHTML = '<div class="alert alert-danger">ESP32 update failed!</div>';
+            }
+            
+            // Reset update status after delay
+            setTimeout(() => {
+                document.getElementById('update-progress-container').classList.add('d-none');
+                updateInProgress = false;
+            }, 3000);
+        });
+        
+        socket.on('update_aborted_acknowledged', () => {
+            addLog('ESP32 acknowledged update abort', 'warning');
+            document.getElementById('update-status').textContent = 'Update canceled';
+            document.getElementById('upload-status').innerHTML = '<div class="alert alert-warning">Update was canceled</div>';
+            updateInProgress = false;
+        });
+        
+        // Initial setup
+        refreshWarehouseStats();
+    </script>
+</body>
+</html> 
