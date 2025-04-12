@@ -113,6 +113,19 @@ Advanced tracking capabilities including:
 - Debug tools
 - Connection status indicators
 
+### 4. Inventory Management
+![Inventory Management](./src/assets/images/update.jpg)
+
+Comprehensive inventory control system featuring:
+- Color-coded product categorization (Red, Blue, Green, Yellow)
+- Real-time stock level monitoring
+- Automated putaway task creation
+- One-click product retrieval
+- Visual shelf occupancy indicators
+- Product history and tracking
+- Batch operations for efficient processing
+- Inventory reports and analytics
+
 ## 🚀 Technology Stack
 
 - **Frontend Framework**: React 18
@@ -228,7 +241,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ by [Your Name]
+## Author
+
+Made by MALEK - [abdelmalek.2004@outlook.com](mailto:abdelmalek.2004@outlook.com)
 
 
 

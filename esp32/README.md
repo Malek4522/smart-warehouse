@@ -87,4 +87,8 @@ The firmware includes:
 To modify the firmware:
 1. Make your changes to the code
 2. Test thoroughly on a development bench
-3. Upload to the production ESP32 devices using OTA updates 
+3. Upload to the production ESP32 devices using OTA updates
+
+## Author
+
+Made by MALEK - [abdelmalek.2004@outlook.com](mailto:abdelmalek.2004@outlook.com) 

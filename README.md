@@ -103,3 +103,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - ESP32 and Arduino communities
 - Node.js and Socket.IO documentation
 - MongoDB documentation
+
+## Author
+
+Made by MALEK - [abdelmalek.2004@outlook.com](mailto:abdelmalek.2004@outlook.com)

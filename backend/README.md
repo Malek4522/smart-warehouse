@@ -82,4 +82,8 @@ The backend uses Socket.IO for real-time communication with ESP32 devices and fr
 - `/src/models` - Database models
 - `/src/routes` - API routes
 - `/src/public` - Static files
-- `/src/updates` - ESP32 firmware updates 
+- `/src/updates` - ESP32 firmware updates
+
+## Author
+
+Made by MALEK - [abdelmalek.2004@outlook.com](mailto:abdelmalek.2004@outlook.com) 
