@@ -1,0 +1,48 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// WiFi Configuration
+#define WIFI_SSID "YourWiFiName"
+#define WIFI_PASSWORD "YourWiFiPassword"
+
+// Server Configuration
+#define SERVER_ADDRESS "ws://your-server-ip:3000"
+#define DEVICE_ID "ESP32_ROBOT_1"
+
+// Hardware Pins
+#define MOTOR_A_IN1 26
+#define MOTOR_A_IN2 27
+#define MOTOR_B_IN1 14
+#define MOTOR_B_IN2 12
+#define MOTOR_SPEED_A 32
+#define MOTOR_SPEED_B 33
+
+// Sensor Pins
+#define COLOR_SENSOR_S0 25
+#define COLOR_SENSOR_S1 33
+#define COLOR_SENSOR_S2 26
+#define COLOR_SENSOR_S3 27
+#define COLOR_SENSOR_OUT 25
+
+// Ultrasonic Sensor Pins
+#define ULTRASONIC_TRIG 13
+#define ULTRASONIC_ECHO 15
+
+// Battery Monitoring
+#define BATTERY_PIN 34
+#define BATTERY_THRESHOLD 3.2 // Volts
+
+// OTA Update
+#define OTA_PASSWORD "your-ota-password"
+
+// Operation Parameters
+#define MAX_SPEED 255
+#define DEFAULT_SPEED 150
+#define TURNING_SPEED 100
+#define OBSTACLE_DISTANCE 20 // cm
+
+// Debug Settings
+#define DEBUG_MODE true
+#define SERIAL_BAUDRATE 115200
+
+#endif // CONFIG_H 

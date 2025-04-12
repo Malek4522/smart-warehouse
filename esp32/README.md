@@ -14,12 +14,18 @@ This directory contains the firmware for ESP32 devices used in the Smart Warehou
 ## Hardware Requirements
 
 - ESP32 development board
-- Motor drivers
+- Motor drivers (L298N)
 - DC motors or stepper motors
 - Color sensors
 - Distance sensors
 - Battery and power management circuitry
 - Chassis and mechanical components
+
+## Files
+
+- `esp32.ino` - Main firmware file for the ESP32 robots
+- `stepperWithL298n.ino` - Helper code for controlling stepper motors using L298N motor driver
+- `config.h.template` - Template configuration file (copy to `config.h` and modify)
 
 ## Installation
 
@@ -32,22 +38,38 @@ This directory contains the firmware for ESP32 devices used in the Smart Warehou
    - Update
 
 4. Connect your ESP32 to your computer
-5. Open the `esp32.ino` file in Arduino IDE
-6. Configure WiFi settings in the code
-7. Upload the firmware to your ESP32
+5. Create your configuration file:
+   ```bash
+   cp config.h.template config.h
+   ```
+6. Edit `config.h` with your network and hardware settings
+7. Open the `esp32.ino` file in Arduino IDE
+8. Upload the firmware to your ESP32
 
 ## Configuration
 
-Update the following configuration in the `esp32.ino` file:
+A `config.h.template` file is provided with all necessary configuration parameters. Important settings include:
 
 ```cpp
 // WiFi credentials
-const char* ssid = "YourWiFiName";
-const char* password = "YourWiFiPassword";
+#define WIFI_SSID "YourWiFiName"
+#define WIFI_PASSWORD "YourWiFiPassword"
 
 // Server connection
-const char* serverAddress = "ws://your-server-ip:3000";
+#define SERVER_ADDRESS "ws://your-server-ip:3000"
+#define DEVICE_ID "ESP32_ROBOT_1"
 ```
+
+Additional configurations include pin assignments for motors and sensors, operation parameters, and debug settings. Make a copy of this template to create your own `config.h` file.
+
+## Motor Control
+
+The system supports stepper motor control using the L298N motor driver. The `stepperWithL298n.ino` file contains specialized code for:
+
+- Controlling stepper motor rotation
+- Setting speed and direction
+- Managing acceleration and deceleration
+- Configuring motor pins and driver connections
 
 ## Functionality
 

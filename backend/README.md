@@ -28,18 +28,36 @@ This is the backend server for the Smart Warehouse system. It manages the wareho
 npm install
 ```
 
-4. Create a `.env` file with the following variables:
+4. Create a `.env` file (use `.env.template` as a reference):
+```bash
+cp .env.template .env
+```
+
+5. Edit the `.env` file with your specific configuration:
 ```
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/smartwarehouse
 JWT_SECRET=your_jwt_secret
 ```
 
-5. Start the server:
+6. Start the server:
 
 ```bash
 npm start
 ```
+
+## Environment Variables
+
+A `.env.template` file is provided with all required configuration options. The important variables include:
+
+- `PORT` - The port on which the server runs
+- `MONGODB_URI` - MongoDB connection string
+- `JWT_SECRET` - Secret key for JWT token generation
+- `ALLOWED_ORIGINS` - CORS allowed origins
+- `WS_PORT` - WebSocket port (if different from HTTP port)
+- `UPDATE_DIR` - Directory for ESP32 firmware updates
+
+Make a copy of this template to create your own `.env` file.
 
 ## API Endpoints
 
